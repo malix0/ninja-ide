@@ -25,8 +25,8 @@ from PyQt4.QtGui import QTextCursor
 from PyQt4.QtGui import QTextFormat
 from PyQt4.QtGui import QTextEdit
 from PyQt4.QtGui import QColor
-from PyQt4.QtGui import QFont
 from PyQt4.QtGui import QKeyEvent
+from PyQt4.QtGui import QFont
 from PyQt4.QtCore import Qt
 from PyQt4.QtCore import QEvent
 from PyQt4.QtCore import QProcess
@@ -36,10 +36,11 @@ from PyQt4.QtCore import SIGNAL
 from ninja_ide import resources
 from ninja_ide.core import settings
 from ninja_ide.tools import console
+from ninja_ide.gui.ide import IDE
 from ninja_ide.gui.editor import syntax_highlighter
 from ninja_ide.gui.editor import python_syntax
-from ninja_ide.tools.completion import completer
-from ninja_ide.tools.completion import completer_widget
+#from ninja_ide.tools.completion import completer
+#from ninja_ide.tools.completion import completer_widget
 
 from ninja_ide.tools.logger import NinjaLogger
 
@@ -63,7 +64,7 @@ BRACES = {"'": "'",
 class ConsoleWidget(QPlainTextEdit):
 
     def __init__(self):
-        QPlainTextEdit.__init__(self, '>>> ')
+        super(ConsoleWidget, self).__init__('>>> ')
         self.setUndoRedoEnabled(False)
         self.apply_editor_style()
         self.setToolTip(self.tr("Show/Hide (F4)"))
@@ -80,7 +81,7 @@ class ConsoleWidget(QPlainTextEdit):
         self.patFrom = re.compile('^(\\s)*from ((\\w)+(\\.)*(\\w)*)+ import')
         self.patImport = re.compile('^(\\s)*import (\\w)+')
         self.patObject = re.compile('[^a-zA-Z0-9_\\.]')
-        self.completer = completer_widget.CompleterWidget(self)
+        #self.completer = completer_widget.CompleterWidget(self)
         self.okPrefix = QRegExp('[.)}:,\]]')
 
         self._pre_key_press = {
@@ -100,7 +101,7 @@ class ConsoleWidget(QPlainTextEdit):
         self._create_context_menu()
 
         #Set Font
-        self.set_font()
+        self.set_font(settings.FONT)
         #Create Highlighter
         parts_scanner, code_scanner, formats = \
             syntax_highlighter.load_syntax(python_syntax.syntax)
@@ -118,6 +119,11 @@ class ConsoleWidget(QPlainTextEdit):
         self.connect(self._proc, SIGNAL("error(QProcess::ProcessError)"),
             self.process_error)
         self._add_system_path_for_frozen()
+
+        ninjaide = IDE.get_service('ide')
+        self.connect(ninjaide,
+            SIGNAL("ns_preferences_editor_font(PyQt_PyObject)"),
+            self.set_font)
 
     def _add_system_path_for_frozen(self):
         try:
@@ -140,9 +146,12 @@ class ConsoleWidget(QPlainTextEdit):
             message = 'Error during execution, QProcess error: %d' % error
         logger.warning('Could not get system path, error: %r' % message)
 
-    def set_font(self, family=settings.FONT_FAMILY, size=settings.FONT_SIZE):
-        font = QFont(family, size)
+    def set_font(self, font):
         self.document().setDefaultFont(font)
+        # Fix for older version of Qt which doens't has ForceIntegerMetrics
+        if "ForceIntegerMetrics" in dir(QFont):
+            self.document().defaultFont().setStyleStrategy(
+                QFont.ForceIntegerMetrics)
 
     def _create_context_menu(self):
         self.popup_menu = self.createStandardContextMenu()
@@ -267,13 +276,13 @@ class ConsoleWidget(QPlainTextEdit):
         return self._get_cursor_position() == 0
 
     def keyPressEvent(self, event):
-        if self.completer.popup().isVisible():
-            if event.key() in (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Tab):
-                event.ignore()
-                self.completer.popup().hide()
-                return
-            elif event.key in (Qt.Key_Space, Qt.Key_Escape, Qt.Key_Backtab):
-                self.completer.popup().hide()
+        #if self.completer.popup().isVisible():
+            #if event.key() in (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Tab):
+                #event.ignore()
+                #self.completer.popup().hide()
+                #return
+            #elif event.key in (Qt.Key_Space, Qt.Key_Escape, Qt.Key_Backtab):
+                #self.completer.popup().hide()
 
         self._check_event_on_selection(event)
         if self._pre_key_press.get(event.key(), lambda x: False)(event):
@@ -301,43 +310,43 @@ class ConsoleWidget(QPlainTextEdit):
                 BRACES[event.text()])
             self.moveCursor(QTextCursor.Left)
 
-        completionPrefix = self._text_under_cursor()
-        if event.key() == Qt.Key_Period or (event.key() == Qt.Key_Space and
-           event.modifiers() == Qt.ControlModifier):
-            self.completer.setCompletionPrefix(completionPrefix)
-            self._resolve_completion_argument()
-        if self.completer.popup().isVisible() and \
-           completionPrefix != self.completer.completionPrefix():
-            self.completer.setCompletionPrefix(completionPrefix)
-            self.completer.popup().setCurrentIndex(
-                self.completer.completionModel().index(0, 0))
-            self.completer.setCurrentRow(0)
-            self._resolve_completion_argument()
+        #completionPrefix = self._text_under_cursor()
+        #if event.key() == Qt.Key_Period or (event.key() == Qt.Key_Space and
+           #event.modifiers() == Qt.ControlModifier):
+            #self.completer.setCompletionPrefix(completionPrefix)
+            #self._resolve_completion_argument()
+        #if self.completer.popup().isVisible() and \
+           #completionPrefix != self.completer.completionPrefix():
+            #self.completer.setCompletionPrefix(completionPrefix)
+            #self.completer.popup().setCurrentIndex(
+                #self.completer.completionModel().index(0, 0))
+            #self.completer.setCurrentRow(0)
+            #self._resolve_completion_argument()
 
-    def _resolve_completion_argument(self):
-        try:
-            cursor = self.textCursor()
-            cursor.movePosition(QTextCursor.StartOfLine,
-                QTextCursor.KeepAnchor)
-            var = cursor.selectedText()
-            chars = self.patObject.findall(var)
-            var = var[var.rfind(chars[-1]) + 1:]
-            cr = self.cursorRect()
-            proposals = completer.get_all_completions(var,
-                imports=self.imports)
-            if not proposals:
-                if self.completer.popup().isVisible():
-                    prefix = var[var.rfind('.') + 1:]
-                    var = var[:var.rfind('.') + 1]
-                    var = self._console.get_type(var)
-                    var += prefix
-                else:
-                    var = self._console.get_type(var)
-                proposals = completer.get_all_completions(var,
-                    imports=self.imports)
-            self.completer.complete(cr, proposals)
-        except:
-            self.completer.popup().hide()
+    #def _resolve_completion_argument(self):
+        #try:
+            #cursor = self.textCursor()
+            #cursor.movePosition(QTextCursor.StartOfLine,
+                #QTextCursor.KeepAnchor)
+            #var = cursor.selectedText()
+            #chars = self.patObject.findall(var)
+            #var = var[var.rfind(chars[-1]) + 1:]
+            #cr = self.cursorRect()
+            #proposals = completer.get_all_completions(var,
+                #imports=self.imports)
+            #if not proposals:
+                #if self.completer.popup().isVisible():
+                    #prefix = var[var.rfind('.') + 1:]
+                    #var = var[:var.rfind('.') + 1]
+                    #var = self._console.get_type(var)
+                    #var += prefix
+                #else:
+                    #var = self._console.get_type(var)
+                #proposals = completer.get_all_completions(var,
+                    #imports=self.imports)
+            #self.completer.complete(cr, proposals)
+        #except:
+            #self.completer.popup().hide()
 
     def highlight_current_line(self):
         self.extraSelections = []
@@ -472,7 +481,8 @@ class ConsoleWidget(QPlainTextEdit):
         #remove the prompt from the QString
         command = command[len(self.prompt):]
         self._add_history(command)
-        incomplete = self._write(command)
+        conditional = command.strip() != 'quit()'
+        incomplete = self._write(command) if conditional else None
         if self.patFrom.match(command) or self.patImport.match(command):
             self.imports += [command]
         if not incomplete:
@@ -541,7 +551,6 @@ class ConsoleWidget(QPlainTextEdit):
             resources.CUSTOM_SCHEME.get('editor-selection-background',
                 resources.COLOR_SCHEME['editor-selection-background']))
         self.setStyleSheet(css)
-        self.set_font(settings.FONT_FAMILY, settings.FONT_SIZE)
 
     def load_project_into_console(self, projectFolder):
         """Load the projectFolder received into the sys.path."""

@@ -97,7 +97,7 @@ class _MenuBar(QObject):
                     and ((namespace == child_namespace) or (not namespace)):
                 child, weight = self._children[each_child]
                 #Group by namespace and weight
-                weight_index = "%d_%s" % (weight / 100, namespace)
+                weight_index = "%d_%s" % (int(weight / 100.0), namespace)
                 children[weight_index].append((child, weight))
 
         return children
@@ -168,7 +168,8 @@ class _MenuBar(QObject):
                 action = item[0]
                 if action.objectName() in settings.TOOLBAR_ITEMS:
                     toolbar.addAction(action)
-            toolbar.addSeparator()
+            if items_in_category:
+                toolbar.addSeparator()
 
 
 menu = _MenuBar()

@@ -19,6 +19,16 @@ from ninja_ide import translations
 #FIXME: add remove unused imports
 #FIXME: add extract method
 
+'''Actions included here are those that are associated with the main
+IDE window, in other words, these are all actions the signals of which
+must ultimately connect to slots in main_container.py
+
+The weight attribute is used to determine the order in which the actions
+are added to the menus.  The first digit determines the menu section it
+must be placed in and the subsequent digits its position in that section,
+i.e. everything 1** will be in the same section (a section being an area in
+the menu between separators) everything 2** in another section LOWER than
+the section determined by 1** and so forth.'''
 ACTIONS = (
     {
     "shortcut": "Show-Selector",
@@ -160,7 +170,7 @@ ACTIONS = (
     },
     {
     "shortcut": "Horizontal-line",
-    "action": {'text': translations.TR_HORIZONTAL_LINE,
+    "action": {'text': translations.TR_INSERT_HORIZONTAL_LINE,
                'image': None,
                'section': (translations.TR_MENU_SOURCE, None),
                'weight': 150},
@@ -168,7 +178,7 @@ ACTIONS = (
     },
     {
     "shortcut": "Title-comment",
-    "action": {'text': translations.TR_TITLE_COMMENT,
+    "action": {'text': translations.TR_INSERT_TITLE_COMMENT,
                'image': None,
                'section': (translations.TR_MENU_SOURCE, None),
                'weight': 160},
@@ -270,10 +280,10 @@ ACTIONS = (
     "shortcut": "Show-Code-Nav",
     "connect": "show_navigation_buttons"
     },
-    {
-    "shortcut": "change-split-focus",
-    "connect": "change_split_focus"
-    },
+    #{
+    #"shortcut": "change-split-focus",
+    #"connect": "change_split_focus"
+    #},
     {
     "shortcut": "change-tab-visibility",
     "connect": "change_tabs_visibility"

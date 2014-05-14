@@ -34,14 +34,17 @@ from PyQt4.QtGui import QTextCursor
 from PyQt4.QtGui import QCheckBox
 from PyQt4.QtGui import QStyle
 from PyQt4.QtGui import QIcon
+from PyQt4.QtCore import QSize
 from PyQt4.QtGui import QShortcut
 from PyQt4.QtCore import SIGNAL
 from PyQt4.QtCore import Qt
 
 from ninja_ide import resources
 from ninja_ide import translations
-from ninja_ide.tools import locator
+from ninja_ide.core import settings
+from ninja_ide.tools.locator import locator
 from ninja_ide.tools import ui_tools
+from ninja_ide.tools.locator import locator_widget
 from ninja_ide.gui import actions
 from ninja_ide.gui.ide import IDE
 from ninja_ide.tools.logger import NinjaLogger
@@ -67,7 +70,10 @@ class _StatusBar(QStatusBar):
         self._widgetStatus = QWidget()
         vbox = QVBoxLayout(self._widgetStatus)
         vbox.setContentsMargins(0, 0, 0, 0)
-        vbox.setSpacing(0)
+        if settings.IS_MAC_OS:
+            vbox.setSpacing(0)
+        else:
+            vbox.setSpacing(3)
         #Search Layout
         self._searchWidget = SearchWidget()
         vbox.addWidget(self._searchWidget)
@@ -75,10 +81,6 @@ class _StatusBar(QStatusBar):
         self._replaceWidget = ReplaceWidget()
         vbox.addWidget(self._replaceWidget)
         self._replaceWidget.setVisible(False)
-        #Code Locator
-        self._codeLocator = locator.CodeLocatorWidget()
-        vbox.addWidget(self._codeLocator)
-        self._codeLocator.setVisible(False)
         #File system completer
         self._fileSystemOpener = FileSystemOpener()
         vbox.addWidget(self._fileSystemOpener)
@@ -90,27 +92,25 @@ class _StatusBar(QStatusBar):
 
         self.connect(shortEscStatus, SIGNAL("activated()"), self.hide_status)
         self.connect(self._searchWidget._btnClose, SIGNAL("clicked()"),
-            self.hide_status)
+                     self.hide_status)
         self.connect(self._replaceWidget._btnCloseReplace, SIGNAL("clicked()"),
-            lambda: self._replaceWidget.setVisible(False))
+                     lambda: self._replaceWidget.setVisible(False))
         self.connect(self._fileSystemOpener.btnClose, SIGNAL("clicked()"),
-            self.hide_status)
+                     self.hide_status)
         self.connect(self._fileSystemOpener, SIGNAL("requestHide()"),
-            self.hide_status)
-        self.connect(self._codeLocator, SIGNAL("hidden()"),
-            self.hide_status)
+                     self.hide_status)
 
         #Register signals connections
         connections = (
             {'target': 'main_container',
-            'signal_name': 'currentEditorChanged(QString)',
-            'slot': self._handle_tab_changed},
+             'signal_name': 'currentEditorChanged(QString)',
+             'slot': self._handle_tab_changed},
             {'target': 'main_container',
-            'signal_name': 'updateLocator(QString)',
-            'slot': self._explore_file_code},
+             'signal_name': 'updateLocator(QString)',
+             'slot': self._explore_file_code},
             {'target': 'projects_explorer',
-            'signal_name': 'updateLocator()',
-            'slot': self._explore_code},
+             'signal_name': 'updateLocator()',
+             'slot': self._explore_code},
             )
 
         IDE.register_signals('status_bar', connections)
@@ -121,6 +121,7 @@ class _StatusBar(QStatusBar):
         self.hide()
         ide = IDE.get_service('ide')
         ide.setStatusBar(self)
+        self._codeLocator = locator_widget.LocatorWidget(ide)
 
         ui_tools.install_shortcuts(self, actions.ACTIONS_STATUS, ide)
 
@@ -206,11 +207,8 @@ class _StatusBar(QStatusBar):
 
     def show_locator(self):
         """Show the status bar with the locator widget."""
-        self.current_status = _STATUSBAR_STATE_LOCATOR
         if not self._codeLocator.isVisible():
-            self._codeLocator.setVisible(True)
-            self.show()
-            self._codeLocator.show_suggestions()
+            self._codeLocator.show()
 
     def show_file_opener(self):
         """Show the status bar with the file opener completer widget."""
@@ -226,7 +224,6 @@ class _StatusBar(QStatusBar):
         self._searchWidget._checkWholeWord.setCheckState(Qt.Unchecked)
         self._searchWidget.setVisible(False)
         self._replaceWidget.setVisible(False)
-        self._codeLocator.setVisible(False)
         self._fileSystemOpener.setVisible(False)
         main_container = IDE.get_service("main_container")
         widget = None
@@ -250,14 +247,18 @@ class SearchWidget(QWidget):
         self._line.setMinimumWidth(250)
         self._btnClose = QPushButton(
             self.style().standardIcon(QStyle.SP_DialogCloseButton), '')
+        self._btnClose.setIconSize(QSize(16, 16))
         self._btnFind = QPushButton(QIcon(":img/find"), '')
+        self._btnFind.setIconSize(QSize(16, 16))
         self.btnPrevious = QPushButton(
             self.style().standardIcon(QStyle.SP_ArrowLeft), '')
+        self.btnPrevious.setIconSize(QSize(16, 16))
         self.btnPrevious.setToolTip(self.trUtf8("Press %s") %
                 resources.get_shortcut("Find-previous").toString(
                     QKeySequence.NativeText))
         self.btnNext = QPushButton(
             self.style().standardIcon(QStyle.SP_ArrowRight), '')
+        self.btnNext.setIconSize(QSize(16, 16))
         self.btnNext.setToolTip(self.trUtf8("Press %s") %
                 resources.get_shortcut("Find-next").toString(
                     QKeySequence.NativeText))
@@ -408,13 +409,14 @@ class ReplaceWidget(QWidget):
     """Replace widget to find and replace occurrences of words in editor."""
 
     def __init__(self, parent=None):
-        QWidget.__init__(self, parent)
+        super(ReplaceWidget, self).__init__(parent)
         hReplace = QHBoxLayout(self)
         hReplace.setContentsMargins(0, 0, 0, 0)
         self._lineReplace = QLineEdit()
         self._lineReplace.setMinimumWidth(250)
         self._btnCloseReplace = QPushButton(
             self.style().standardIcon(QStyle.SP_DialogCloseButton), '')
+        self._btnCloseReplace.setIconSize(QSize(16, 16))
         self._btnReplace = QPushButton(self.trUtf8("Replace"))
         self._btnReplaceAll = QPushButton(self.trUtf8("Replace All"))
         self._btnReplaceSelection = QPushButton(
@@ -511,11 +513,12 @@ class FileSystemOpener(QWidget):
     """Widget to handle opening files through path write with completion."""
 
     def __init__(self):
-        QWidget.__init__(self)
+        super(FileSystemOpener, self).__init__()
         hbox = QHBoxLayout(self)
         hbox.setContentsMargins(0, 0, 0, 0)
         self.btnClose = QPushButton(
             self.style().standardIcon(QStyle.SP_DialogCloseButton), '')
+        self.btnClose
         self.completer = QCompleter(self)
         self.pathLine = ui_tools.LineEditTabCompleter(self.completer)
         fileModel = QFileSystemModel(self.completer)

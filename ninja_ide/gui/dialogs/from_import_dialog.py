@@ -17,6 +17,9 @@
 
 from __future__ import absolute_import
 
+from sys import builtin_module_names
+from pkgutil import iter_modules
+
 from PyQt4.QtGui import QDialog
 from PyQt4.QtGui import QHBoxLayout
 from PyQt4.QtGui import QLabel
@@ -31,17 +34,24 @@ from ninja_ide.tools import introspection
 
 
 class FromImportDialog(QDialog):
+    """From Import dialog class"""
 
     def __init__(self, editorWidget, parent=None):
         QDialog.__init__(self, parent, Qt.Dialog)
         self.setWindowTitle('from ... import ...')
         self._editorWidget = editorWidget
 
-        text = self._editorWidget.get_text()
-        self._imports = introspection.obtain_imports(text)
+        source = self._editorWidget.get_text()
+        source = source.encode(self._editorWidget.encoding)
+        self._imports = introspection.obtain_imports(source)
 
-        self._froms = sorted(set([self._imports['fromImports'][imp]['module']
-                            for imp in self._imports['fromImports']]))
+        self._imports_names = list(self._imports["imports"].keys())
+        self._imports_names += [imp for imp in self._imports['fromImports']]
+        self._froms = [self._imports['fromImports'][imp]['module']
+                       for imp in self._imports['fromImports']]
+        self._froms += builtin_module_names
+        self._froms += [module_name[1] for module_name in iter_modules()]
+        self._froms = tuple(sorted(set(self._froms)))
 
         hbox = QHBoxLayout(self)
         hbox.addWidget(QLabel('from'))
@@ -51,16 +61,19 @@ class FromImportDialog(QDialog):
         hbox.addWidget(self._lineFrom)
         hbox.addWidget(QLabel('import'))
         self._lineImport = QLineEdit()
+        self._completerImport = QCompleter(self._imports_names)
+        self._lineImport.setCompleter(self._completerImport)
         hbox.addWidget(self._lineImport)
         self._btnAdd = QPushButton(self.tr('Add'))
         hbox.addWidget(self._btnAdd)
 
         self.connect(self._lineImport, SIGNAL("returnPressed()"),
-            self._add_import)
+                     self._add_import)
         self.connect(self._btnAdd, SIGNAL("clicked()"),
-            self._add_import)
+                     self._add_import)
 
     def _add_import(self):
+        """Get From item and Import item and add the import on the code"""
         fromItem = self._lineFrom.text()
         importItem = self._lineImport.text()
         if fromItem in self._froms:

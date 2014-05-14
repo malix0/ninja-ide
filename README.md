@@ -14,10 +14,9 @@ software easier and more enjoyable.
 
 ## Dependencies
 
-Both of these:
-
 -   [Python](http://python.org/) >= 2.7 (or Python3)
 -   [PyQt](http://www.riverbankcomputing.com/software/pyqt/intro) >= 4.8
+-   Virtualenv
 
 ## Cloning and Running
 
@@ -25,9 +24,10 @@ You can clone this repo and simply execute:
 
     git clone git://github.com/ninja-ide/ninja-ide.git
     cd ninja-ide
+    sudo pip install -r requeriments.txt
     python ninja-ide.py
 
-Piece of cake, uh?
+Piece of cake, huh?
 
 ## Source Code API Documentation
 

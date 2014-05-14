@@ -19,6 +19,7 @@ from __future__ import unicode_literals
 
 from PyQt4.QtGui import QStyle
 from PyQt4.QtCore import QThread
+from PyQt4.QtCore import SIGNAL
 
 from ninja_ide import resources
 from ninja_ide import translations
@@ -43,6 +44,12 @@ class Pep8Checker(QThread):
         self.checks = {}
 
         self.checker_icon = QStyle.SP_MessageBoxWarning
+
+        ninjaide = IDE.get_service('ide')
+        self.connect(ninjaide,
+                     SIGNAL("ns_preferences_editor_checkStyle(PyQt_PyObject)"),
+                     lambda: remove_pep8_checker())
+        self.connect(self, SIGNAL("checkerCompleted()"), self.refresh_display)
 
     @property
     def dirty(self):
@@ -69,32 +76,26 @@ class Pep8Checker(QThread):
             self.reset()
             source = self._editor.get_text()
             tempData = pep8mod.run_check(self._path, source)
-            i = 0
-            while i < len(tempData):
-                lineno = -1
-                try:
-                    offset = 2 + len(file_ext)
-                    startPos = tempData[i].find('.%s:' % file_ext) + offset
-                    endPos = tempData[i].find(':', startPos)
-                    lineno = int(tempData[i][startPos:endPos]) - 1
-                    error = tempData[i][tempData[i].find(
-                        ':', endPos + 1) + 2:]
-                    line = '\n'.join(
-                        [error, tempData[i + 1], tempData[i + 2]])
-                except Exception:
-                    line = ''
-                finally:
-                    i += 3
-                if line and lineno > -1:
-                    if lineno not in self.checks:
-                        self.checks[lineno] = [line]
-                    else:
-                        message = self.checks[lineno]
-                        message += [line]
-                        self.checks[lineno] = message
+            for result in tempData:
+                message = "\n".join(("%s %s" % (
+                    result["code"],
+                    result["text"]),
+                    result["line"],
+                    result["pointer"]))
+                if result["line_number"] not in self.checks:
+                    self.checks[result["line_number"]] = [message]
+                else:
+                    original = self.checks[result["line_number"]]
+                    original += [message]
+                    self.checks[result["line_number"]] = original
         else:
             self.reset()
-        self.refresh_display()
+        self.emit(SIGNAL("checkerCompleted()"))
+
+    def message(self, index):
+        if index in self.checks and settings.CHECK_HIGHLIGHT_LINE:
+            return self.checks[index][0]
+        return None
 
     def refresh_display(self):
         error_list = IDE.get_service('tab_errors')
@@ -103,13 +104,15 @@ class Pep8Checker(QThread):
 
 
 def remove_pep8_checker():
+    _default_color = resources.COLOR_SCHEME['pep8-underline']
     checker = (Pep8Checker,
-        resources.CUSTOM_SCHEME.get('pep8-underline',
-        resources.COLOR_SCHEME['pep8-underline']), 2)
+               resources.CUSTOM_SCHEME.get('pep8-underline', _default_color), 2)
     remove_checker(checker)
 
 
 if settings.CHECK_STYLE:
-    register_checker(checker=Pep8Checker,
-        color=resources.CUSTOM_SCHEME.get('pep8-underline',
-        resources.COLOR_SCHEME['pep8-underline']), priority=2)
+    register_checker(
+        checker=Pep8Checker,
+        color=resources.CUSTOM_SCHEME.get(
+            'pep8-underline',
+            resources.COLOR_SCHEME['pep8-underline']), priority=2)

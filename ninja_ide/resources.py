@@ -14,6 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with NINJA-IDE; If not, see <http://www.gnu.org/licenses/>.
+
+
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
@@ -30,11 +32,7 @@ from PyQt4.QtCore import Qt
 # CHECK PYTHON VERSION
 ###############################################################################
 
-if sys.version_info.major == 3:
-    IS_PYTHON3 = True
-else:
-    IS_PYTHON3 = False
-
+IS_PYTHON3 = sys.version_info.major == 3
 
 ###############################################################################
 # PATHS
@@ -68,7 +66,7 @@ SYNTAX_FILES = os.path.join(PRJ_PATH, "extensions", "syntax")
 PLUGINS = os.path.join(HOME_NINJA_PATH, "extensions", "plugins")
 
 PLUGINS_DESCRIPTOR = os.path.join(EXTENSIONS_PATH,
-                                    "plugins", "descriptor.json")
+                                  "plugins", "descriptor.json")
 
 LANGS = os.path.join(EXTENSIONS_PATH, "languages")
 
@@ -111,34 +109,35 @@ PLUGINS_COMMUNITY = 'http://ninja-ide.org/plugins/api/community'
 ###############################################################################
 
 COLOR_SCHEME = {
-    "keyword": "#6EC7D7",
+    "keyword": "#83c1fb",
     "operator": "#FFFFFF",
     "brace": "#FFFFFF",
-    "definition": "#F6EC2A",
-    "string": "#B369BF",
+    "definition": "#fdff74",
+    "string": "#d07cd3",
     "string2": "#86d986",
-    "comment": "#80FF80",
+    "comment": "#7c7c7c",
     "properObject": "#6EC7D7",
     "numbers": "#F8A008",
-    "spaces": "#7b7b7b",
-    "extras": "#ee8859",
-    "editor-background": "#1E1E1E",
-    "editor-selection-color": "#FFFFFF",
-    "editor-selection-background": "#437DCD",
-    "editor-text": "#B3BFA7",
+    "extras": "#fdb269",
+    "editor-background": "#1d1f21",
+    "editor-selection-color": "#000000",
+    "editor-selection-background": "#aaaaaa",
+    "editor-text": "#c5c8c6",
     "current-line": "#858585",
-    "selected-word": "red",
+    "selected-word": "#a8ff60",
     "pending": "red",
     "selected-word-background": "#009B00",
-    "fold-area": "#FFFFFF",
-    "fold-arrow": "#454545",
+    "fold-area": "#292c2f",
+    "fold-arrow": "#696c6e",
     "linkNavigate": "orange",
     "brace-background": "#5BC85B",
     "brace-foreground": "red",
     "error-underline": "red",
     "pep8-underline": "yellow",
-    "sidebar-background": "#c4c4c4",
-    "sidebar-foreground": "black",
+    "sidebar-background": "#292c2f",
+    "sidebar-selected-background": "#46484b",
+    "sidebar-foreground": "#868989",
+    "sidebar-selected-foreground": "#c5c8c6",
     "locator-name": "white",
     "locator-name-selected": "black",
     "locator-path": "gray",
@@ -216,7 +215,7 @@ SHORTCUTS = {
     "History-Copy": QKeySequence(Qt.CTRL + Qt.ALT + Qt.Key_C),
     "History-Paste": QKeySequence(Qt.CTRL + Qt.ALT + Qt.Key_V),
     "Add-Bookmark-or-Breakpoint": QKeySequence(Qt.CTRL + Qt.Key_B),
-    "change-split-focus": QKeySequence(Qt.CTRL + Qt.Key_Tab),
+    #"change-split-focus": QKeySequence(Qt.CTRL + Qt.Key_Tab),
     "Move-Tab-to-right": QKeySequence(Qt.CTRL + Qt.SHIFT + Qt.Key_0),
     "Move-Tab-to-left": QKeySequence(Qt.CTRL + Qt.SHIFT + Qt.Key_9),
     "change-tab-visibility": QKeySequence(Qt.SHIFT + Qt.Key_F1),
@@ -227,7 +226,7 @@ SHORTCUTS = {
     "copy": QKeySequence(Qt.CTRL + Qt.Key_C),
     "paste": QKeySequence(Qt.CTRL + Qt.Key_V),
     "expand-symbol-combo": QKeySequence(Qt.CTRL + Qt.Key_2),
-    "expand-file-combo": QKeySequence(Qt.CTRL + Qt.Key_1)}
+    "expand-file-combo": QKeySequence(Qt.CTRL + Qt.Key_Tab)}
 
 CUSTOM_SHORTCUTS = {}
 
@@ -240,15 +239,14 @@ def load_shortcuts():
     """
     Loads the shortcuts from QSettings
     """
-    global SHORTCUTS
-    global CUSTOM_SHORTCUTS
+    global SHORTCUTS, CUSTOM_SHORTCUTS
     settings = QSettings(SETTINGS_PATH, QSettings.IniFormat)
     for action in SHORTCUTS:
         #default shortcut
         default_action = SHORTCUTS[action].toString()
         #get the custom shortcut or the default
         shortcut_action = settings.value("shortcuts/%s" % action,
-            default_action)
+                                         default_action)
         #set the shortcut
         CUSTOM_SHORTCUTS[action] = QKeySequence(shortcut_action)
 
@@ -258,8 +256,7 @@ def get_shortcut(shortcut_name):
     Returns the shortcut looking into CUSTOM_SHORTCUTS and
     SHORTCUTS
     """
-    global SHORTCUTS
-    global CUSTOM_SHORTCUTS
+    global SHORTCUTS, CUSTOM_SHORTCUTS
     return CUSTOM_SHORTCUTS.get(shortcut_name, SHORTCUTS.get(shortcut_name))
 
 
@@ -275,7 +272,7 @@ def create_home_dir_structure():
     """
     Create the necesary directories structure for NINJA-IDE
     """
-    for d in (HOME_NINJA_PATH, EXTENSIONS_PATH, PLUGINS, EDITOR_SKINS,
-              LANGS, NINJA_THEME_DOWNLOAD, NINJA_KNOWLEDGE_PATH):
-        if not os.path.isdir(d):
-            os.mkdir(d)
+    for directory in (HOME_NINJA_PATH, EXTENSIONS_PATH, PLUGINS, EDITOR_SKINS,
+                      LANGS, NINJA_THEME_DOWNLOAD, NINJA_KNOWLEDGE_PATH):
+        if not os.path.isdir(directory):
+            os.mkdir(directory)

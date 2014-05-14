@@ -28,6 +28,7 @@ from PyQt4.QtGui import QSpacerItem
 from PyQt4.QtGui import QSizePolicy
 from PyQt4.QtGui import QShortcut
 from PyQt4.QtGui import QKeySequence
+from PyQt4.QtCore import QSize
 from PyQt4.QtCore import Qt
 from PyQt4.QtCore import SIGNAL
 from PyQt4.QtWebKit import QWebPage
@@ -53,11 +54,11 @@ class _ToolsDock(QWidget):
         #Register signals connections
         connections = (
             {'target': 'main_container',
-            'signal_name': "findOcurrences(QString)",
-            'slot': self.show_find_occurrences},
+             'signal_name': "findOcurrences(QString)",
+             'slot': self.show_find_occurrences},
             {'target': 'main_container',
-            'signal_name': "runFile(QString)",
-            'slot': self.execute_file},
+             'signal_name': "runFile(QString)",
+             'slot': self.execute_file},
         )
         IDE.register_signals('tools_dock', connections)
         IDE.register_service("tools_dock", self)
@@ -77,56 +78,38 @@ class _ToolsDock(QWidget):
         vbox.addWidget(self.stack)
 
         self._console = console_widget.ConsoleWidget()
-        self.stack.addWidget(self._console)
-
         self._runWidget = run_widget.RunWidget()
-        self.stack.addWidget(self._runWidget)
-
         self._web = web_render.WebRender()
-        self.stack.addWidget(self._web)
-
         self._findInFilesWidget = find_in_files.FindInFilesWidget(
             self.parent())
-        self.stack.addWidget(self._findInFilesWidget)
-
-        #Last Element in the Stacked widget
-        self._results = results.Results(self)
-        self.stack.addWidget(self._results)
-
-        self._btnConsole = QPushButton(QIcon(":img/console"), '')
-        self._btnConsole.setToolTip(translations.TR_CONSOLE)
-        self._btnRun = QPushButton(QIcon(":img/play"), '')
-        self._btnRun.setToolTip(translations.TR_OUTPUT)
-        self._btnWeb = QPushButton(QIcon(":img/web"), '')
-        self._btnWeb.setToolTip(translations.TR_WEB_PREVIEW)
-        self._btnFind = QPushButton(QIcon(":img/find"), '')
-        self._btnFind.setToolTip(translations.TR_FIND_IN_FILES)
-        #Toolbar
-        hbox.addWidget(self.__toolbar)
-        self.__toolbar.addWidget(self._btnConsole)
-        self.__toolbar.addWidget(self._btnRun)
-        self.__toolbar.addWidget(self._btnWeb)
-        self.__toolbar.addWidget(self._btnFind)
-        self.__toolbar.addSeparator()
-        hbox.addSpacerItem(QSpacerItem(1, 0, QSizePolicy.Expanding))
-        btn_close = QPushButton(
-            self.style().standardIcon(QStyle.SP_DialogCloseButton), '')
-        btn_close.setObjectName('navigation_button')
-        btn_close.setToolTip('F4: ' + translations.TR_ALL_VISIBILITY)
-        hbox.addWidget(btn_close)
 
         # Not Configurable Shortcuts
         shortEscMisc = QShortcut(QKeySequence(Qt.Key_Escape), self)
 
         self.connect(shortEscMisc, SIGNAL("activated()"), self.hide)
-        self.connect(self._btnConsole, SIGNAL("clicked()"),
-            lambda: self._item_changed(0))
-        self.connect(self._btnRun, SIGNAL("clicked()"),
-            lambda: self._item_changed(1))
-        self.connect(self._btnWeb, SIGNAL("clicked()"),
-            lambda: self._item_changed(2))
-        self.connect(self._btnFind, SIGNAL("clicked()"),
-            lambda: self._item_changed(3))
+
+        #Toolbar
+        hbox.addWidget(self.__toolbar)
+        self.add_to_stack(self._console, ":img/console",
+                          translations.TR_CONSOLE)
+        self.add_to_stack(self._runWidget, ":img/play",
+                          translations.TR_OUTPUT)
+        self.add_to_stack(self._web, ":img/web",
+                          translations.TR_WEB_PREVIEW)
+        self.add_to_stack(self._findInFilesWidget, ":img/find",
+                          translations.TR_FIND_IN_FILES)
+        #Last Element in the Stacked widget
+        self._results = results.Results(self)
+        self.stack.addWidget(self._results)
+        self.__toolbar.addSeparator()
+
+        hbox.addSpacerItem(QSpacerItem(1, 0, QSizePolicy.Expanding))
+        btn_close = QPushButton(
+            self.style().standardIcon(QStyle.SP_DialogCloseButton), '')
+        btn_close.setIconSize(QSize(24, 24))
+        btn_close.setObjectName('navigation_button')
+        btn_close.setToolTip('F4: ' + translations.TR_ALL_VISIBILITY)
+        hbox.addWidget(btn_close)
         self.connect(btn_close, SIGNAL('clicked()'), self.hide)
 
     def install(self):
@@ -188,7 +171,7 @@ class _ToolsDock(QWidget):
         if editorWidget:
             #emit a signal for plugin!
             self.emit(SIGNAL("fileExecuted(QString)"),
-                editorWidget.file_path)
+                      editorWidget.file_path)
             main_container.save_file(editorWidget)
             ext = file_manager.get_file_extension(editorWidget.file_path)
             #TODO: Remove the IF statment and use Handlers
@@ -213,8 +196,9 @@ class _ToolsDock(QWidget):
                 self.emit(SIGNAL("projectExecuted(QString)"), nproject.path)
 
                 main_file = file_manager.create_path(nproject.path,
-                    nproject.main_file)
-                self._run_application(main_file,
+                                                     nproject.main_file)
+                self._run_application(
+                    main_file,
                     pythonExec=nproject.python_exec_command,
                     PYTHONPATH=nproject.python_path,
                     programParams=nproject.program_params,
@@ -222,12 +206,12 @@ class _ToolsDock(QWidget):
                     postExec=nproject.post_exec_script)
 
     def _run_application(self, fileName, pythonExec=False, PYTHONPATH=None,
-            programParams='', preExec='', postExec=''):
+                         programParams='', preExec='', postExec=''):
         """Execute the process to run the application."""
         self._item_changed(1)
         self.show()
         self._runWidget.start_process(fileName, pythonExec, PYTHONPATH,
-            programParams, preExec, postExec)
+                                      programParams, preExec, postExec)
         self._runWidget.input.setFocus()
 
     def show_results(self, items):
@@ -265,6 +249,7 @@ class _ToolsDock(QWidget):
         self.stack.addWidget(widget)
         #create a button in the toolbar to show the widget
         button = QPushButton(QIcon(icon_path), '')
+        button.setIconSize(QSize(16, 16))
         button.setToolTip(description)
         index = self.stack.count() - 1
         func = lambda: self._item_changed(index)
@@ -279,7 +264,7 @@ class StackedWidget(QStackedWidget):
     def setCurrentIndex(self, index):
         """Change the current widget being displayed with an animation."""
         self.fader_widget = ui_tools.FaderWidget(self.currentWidget(),
-            self.widget(index))
+                                                 self.widget(index))
         QStackedWidget.setCurrentIndex(self, index)
 
     def show_display(self, index):

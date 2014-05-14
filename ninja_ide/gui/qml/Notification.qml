@@ -17,6 +17,11 @@ Rectangle {
         textArea.text = message;
     }
 
+    function setColor(background_color, foreground_color){
+        frame.color = background_color;
+        textArea.color = foreground_color;
+    }
+
     function start(interval) {
         frame.interval = interval;
         showFrame.start();
